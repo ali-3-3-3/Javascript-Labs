@@ -9,6 +9,8 @@ const port = 3000;
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+app.use(express.static("public"));
+
 app.set("view engine", "ejs");
 
 //since there's only 1 route for the root path,

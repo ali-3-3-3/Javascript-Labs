@@ -7,7 +7,7 @@ const {
 } = require("../lib/database");
 
 const renderCustomerForm = (req, res) => {
-  res.render("customer_form");
+  res.render("customer_form", { page_name: "new_customer" });
 };
 
 const addACustomer = async (req, res) => {
@@ -41,6 +41,7 @@ const getAllCustomersHandler = async (req, res) => {
   const customers = await getAllCustomers();
   res.render("list_customers", {
     customers,
+    page_name: "list_customers",
   });
 };
 

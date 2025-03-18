@@ -1,57 +1,374 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <title>List Customers</title>
-  </head>
+  <%- include("head", {title: 'Simple CRM'}) %>
 
-  <body>
-    <div class="container" style="margin-top: 20px">
-      <div class="col-3"><%- include("sidebar") %></div>
-      <div class="col-9 ps-4">
-        <h1>List Customers</h1>
-        <table border="1" cellspacing="0" cellpadding="5">
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Gender</th>
-            <th>DOB</th>
-            <th>Created</th>
-          </tr>
-          <% customers.forEach(customer => { %>
-          <tr>
-            <td><%= customer._id %></td>
-            <td><%= customer.name %></td>
-            <td><%= customer.gender %></td>
-            <td>
-              <%= customer.birthday ? new
-              Date(customer.birthday).toLocaleString() : "N/A" %>
-            </td>
-            <td>
-              <%= customer.created ? new Date(customer.created).toLocaleString()
-              : "N/A" %>
-            </td>
-            <td>
-              <a href="/customers/<%= customer._id %>" class="btn btn-warning"
-                >Edit</a
-              >
-              <form
-                action="/customers/<%= customer._id %>/delete"
-                method="POST"
-              >
-                <button type="submit" class="btn btn-danger">Delete</button>
-              </form>
-            </td>
-          </tr>
-          <% }); %>
-        </table>
+  <body class="hold-transition sidebar-mini layout-fixed">
+    <div class="wrapper">
+      <!-- prettier-ignore -->
+      <%- include("navbar") %> 
+      <%- include("sidebar") %>
+
+      <div class="content-wrapper">
+        <!-- Content Header (Page header) -->
+        <div class="content-header">
+          <div class="container-fluid">
+            <div class="row mb-2">
+              <div class="col-sm-6">
+                <h1 class="m-0 text-dark">List Customers</h1>
+              </div>
+              <!-- /.col -->
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                  <li class="breadcrumb-item">
+                    <a href="/">Home</a>
+                  </li>
+                  <li class="breadcrumb-item active">List Customers</li>
+                </ol>
+              </div>
+              <!-- /.col -->
+            </div>
+            <!-- /.row -->
+          </div>
+          <!-- /.container-fluid -->
+        </div>
+        <!-- /.content-header -->
+
+        <!-- Main content -->
+        <section class="content">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <table
+                    id="datatable"
+                    class="table table-bordered table-striped"
+                  >
+                    <thead>
+                      <tr>
+                        <th>Id</th>
+                        <th>Name</th>
+                        <th>Gender</th>
+                        <th>DOB</th>
+                        <th>Created</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot>
+                      <tr>
+                        <th>Id</th>
+                        <th>Name</th>
+                        <th>Gender</th>
+                        <th>DOB</th>
+                        <th>Created</th>
+                        <th></th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+              <!-- /.card -->
+            </div>
+            <!-- /.col -->
+          </div>
+
+          <div class="modal fade" id="modal-default">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">
+                    Customer Details
+                  </h5>
+                  <button type="button" class="close" data-dismiss="modal">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body" id="dialog-body"></div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-dismiss="modal"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+          </div>
+          <!-- /.modal -->
+        </section>
+        <!-- /.content -->
       </div>
+      <%- include("footer") %>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <%- include("script") %>
+    <script>
+      let selectedCId = null;
+      const dtable = $("#datatable").DataTable({
+        paging: true,
+        lengthChange: false,
+        pageLength: 5, //5 entries per page
+        searching: true,
+        ordering: true,
+        info: true,
+        autoWidth: false,
+        ajax: {
+          url: "/api/customers",
+          dataFilter: function (data) {
+            //add the 'data' attribute to the JSON response
+            //so that it can be read properly with DataTable
+            const json = jQuery.parseJSON(data);
+
+            for (const item of json) {
+              const { gender, created, dob } = item;
+
+              //convert gender's value to 'Female' or 'Male'
+              item.gender = gender === 1 ? "Female" : "Male";
+
+              //convert dob and created's date format
+              //remove the [UTC] suffix
+              item.created = moment(
+                created.substring(0, created.length - 5)
+              ).format("DD/MM/YYYY");
+              item.dob = moment(dob.substring(0, dob.length - 5)).format(
+                "DD/MM/YYYY"
+              );
+            }
+
+            return JSON.stringify({ data: json });
+          },
+        },
+        columnDefs: [
+          {
+            targets: -1,
+            data: null,
+            defaultContent: `<div class="btn-group">
+              <button type="button" data-type="view" class="search btn btn-default" data-toggle="modal" data-target="#modal-default"><i class="fa fa-fw fa-search"></i></button>
+              <button type="button" data-type="edit" class="btn btn-default"><i class="fa fa-fw fa-edit"></i></button>
+              <button type="button" data-type="delete" class="btn btn-default"><i class="fa fa-fw fa-trash"></i></button>
+            </div>`,
+          },
+        ],
+        columns: [
+          { data: "_id" },
+          { data: "name" },
+          { data: "gender" },
+          { data: "dob" },
+          { data: "created" },
+          { data: null },
+        ],
+      });
+
+      function reloadDataTable() {
+        dtable.ajax.reload(function () {
+          if (selectedCId !== null) {
+            const data = dtable.data();
+            for (let i = 0; i < data.length; i++) {
+              const thisItem = data[i];
+              const { _id } = thisItem;
+              if (_id === selectedCId) {
+                refreshDialog(thisItem);
+                break;
+              }
+            }
+          }
+        });
+      } //end reloadDataTable
+
+      function addContact(cId) {
+        const contactType = $("#selectContact").val();
+        const contactValue = $("#inputContactValue").val().trim();
+        if (contactValue === "") {
+          return;
+        }
+
+        const data = {};
+        if (contactType === "PHONE") {
+          data.phone = contactValue;
+        } else if (contactType === "EMAIL") {
+          data.email = contactValue;
+        }
+
+        $.ajax({
+          url: `/api/customers/${cId}/contacts`,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          type: "POST",
+          data: JSON.stringify(data),
+          success: function () {
+            reloadDataTable();
+          },
+        });
+      } //end addContact
+
+      function addField(cId) {
+        const field = $("#inputField").val().trim();
+        const fieldValue = $("#inputFieldValue").val().trim();
+        if (field === "" || fieldValue === "") {
+          return;
+        }
+
+        $.ajax({
+          url: `/api/customers/${cId}/fields`,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          type: "POST",
+          data: JSON.stringify({ [field]: fieldValue }),
+          success: function () {
+            reloadDataTable();
+          },
+        });
+      } //end addField
+
+      function deletePhone(e) {
+        const thisElement = $(e);
+        const cId = thisElement.attr("data-customer-id");
+        const phone = thisElement.attr("data-contact-phone");
+
+        if (confirm("Do you want to delete?")) {
+          $.ajax({
+            url: `/api/customers/${cId}/contacts?phone=${phone}`,
+            type: "DELETE",
+            success: function () {
+              reloadDataTable();
+            },
+          });
+        }
+      } //end deletePhone
+
+      function deleteEmail(e) {
+        const thisElement = $(e);
+        const cId = thisElement.attr("data-customer-id");
+        const email = thisElement.attr("data-contact-email");
+
+        if (confirm("Do you want to delete?")) {
+          $.ajax({
+            url: `/api/customers/${cId}/contacts?email=${email}`,
+            type: "DELETE",
+            success: function () {
+              reloadDataTable();
+            },
+          });
+        }
+      } //end deleteEmail
+
+      function deleteField(e) {
+        const thisElement = $(e);
+        const fieldName = thisElement.attr("data-field-name");
+        const fieldValue = thisElement.attr("data-field-value");
+        const cId = thisElement.attr("data-customer-id");
+
+        if (confirm("Do you want to delete?")) {
+          $.ajax({
+            url: `/api/customers/${cId}/fields/?field=${fieldName}&value=${fieldValue}`,
+            type: "DELETE",
+            success: function () {
+              reloadDataTable();
+            },
+          });
+        }
+      } //end deleteField
+
+      function refreshDialog(data) {
+        const { _id, name, gender, dob, created, fields } = data;
+
+        let html = `<div class="row">
+        <div class="col-4"><b>Id</b></div>
+        <div class="col-8">${_id}</div>
+        <div class="col-4"><b>Name</b></div>
+        <div class="col-8">${name}</div>
+        <div class="col-4"><b>Gender</b></div>
+        <div class="col-8">${gender}</div>
+        <div class="col-4"><b>DOB</b></div>
+        <div class="col-8">${dob}</div>
+        <div class="col-4"><b>Created</b></div>
+        <div class="col-8">${created}</div>`;
+
+        //add list of fields
+        for (const field of fields) {
+          const fieldName = Object.keys(field)[0];
+          const fieldValue = field[fieldName];
+          html += `<div class="col-4"><b>${fieldName}</b></div>
+                   <div class="col-4">${fieldValue}</div>
+                   <div class="col-4">
+                    <button class="btn btn-danger btn-sm" data-customer-id="${_id}" data-field-name="${fieldName}" data-field-value="${fieldValue}" onclick="deleteField(this)">Delete</button>
+                  </div>`;
+        }
+
+        //add list of contacts
+        const contacts = data.contacts;
+        for (const contact of contacts) {
+          const { phone, email } = contact;
+          if (phone) {
+            html += `<div class="col-4"><b>Phone</b></div>
+                    <div class="col-4">${phone}</div>
+                    <div class="col-4"><button class="btn btn-danger btn-sm"
+                      data-customer-id="${_id}"
+                      data-contact-phone="${phone}"
+                      onclick="deletePhone(this)">Delete</button></div>`;
+          } else if (email) {
+            html += `<div class="col-4"><b>Email</b></div>
+                    <div class="col-4">${email}</div>
+                    <div class="col-4"><button class="btn btn-danger btn-sm"
+                      data-customer-id="${_id}"
+                      data-contact-email="${email}"
+                      onclick="deleteEmail(this)">Delete</button></div>`;
+          }
+        }
+
+        //add textbox for adding field
+        html += ` <div class="col-4"><input class="form-control" id="inputField" placeholder="field name" required/></div>
+                  <div class="col-4"><input class="form-control" id="inputFieldValue" placeholder="field value" required/></div>
+                  <div class="col-4"><button class="btn btn-primary" onclick="addField('${_id}')">Add Field</button></div>`;
+
+        //add textbox for adding contact
+        html += `<div class="col-4"><select class="form-control" id="selectContact"><option value="PHONE">Phone</option><option value="EMAIL">Email</option></select></div>
+                 <div class="col-4"><input class="form-control" id="inputContactValue" required/></div>
+                 <div class="col-4"><button class="btn btn-success" onclick="addContact('${_id}')">Add Contact</button></div>`;
+
+        html += "</div>";
+        $("#dialog-body").html(html);
+      } //end refreshDialog
+
+      $("#datatable tbody").on("click", "button", function () {
+        const button = $(this);
+        const type = button.attr("data-type");
+        const data = dtable.row($(this).parents("tr")).data();
+        const { _id } = data;
+
+        if (type === "view") {
+          //load the dialog box
+          refreshDialog(data);
+          selectedCId = _id;
+        } //end if
+        else if (type === "edit") {
+          window.location.href = `/customers/${_id}`;
+        } //end else if
+        else if (type === "delete") {
+          //DO a DELETE request and refresh the table
+          if (confirm("Do you want to delete?")) {
+            $.ajax({
+              url: `/api/customers/${_id}`,
+              type: "DELETE",
+              success: function () {
+                dtable.ajax.reload();
+              },
+            });
+          } //end if
+        } //end else if
+      });
+
+      $("#modal-default").on("hidden.bs.modal", function (e) {
+        selectedCId = null;
+      });
+    </script>
   </body>
 </html>
